@@ -5,14 +5,14 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # 3. Copiar dependencias e instalarlas (aprovecha la caché de capas de Docker)
-COPY requirements.txt .
+COPY src/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 4. Copiar el resto del código fuente del proyecto
-COPY . .
+COPY src/ ./src/
 
 # 5. Puerto que escuchará la aplicación dentro del contenedor (documentativo)
 EXPOSE 5000
 
 # 6. Comando por defecto al iniciar el contenedor
-CMD ["python", "app.py"]
+CMD ["python", "src/main.py"]

@@ -1,45 +1,54 @@
+---
 name: Test and Build
 
-on:
+'on':
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
-  test_and_build:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.11"
-    - name: Install dependencies
-      run: pip install -r src/requirements.txt
-    - name: Check linting
-      working-directory: src
-      run: ruff check .
-    - name: Test with pytest
-      working-directory: src
-      run: pytest -o python_files=tests.py tests.py
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r src/requirements.txt
+      - name: Check linting
+        working-directory: src
+        run: ruff check .
+      - name: Test with pytest
+        working-directory: src
+        run: pytest -o python_files=tests.py tests.py
 
-#  login:
-#    needs: test_and_build
-#    runs-on: ubuntu-latest
-#    steps:
-#    - uses: actions/checkout@v4
-#    - name: Login to GitHub Container Registry
-#      uses: docker/login-action@v4
-#      with:
-#        registry: ghcr.io
-#        username: ${{ github.actor }}
-#        password: ${{ secrets.GITHUB_TOKEN }}
-#    - name: Build and push
-#      uses: docker/build-push-action@v7
-#      with:
-#        push: true
-#        tags: ghcr.io/${{ github.repository }}:latest
+  publish_image:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set image name
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:latest
